@@ -49,7 +49,7 @@ void ModbusSerial::BuildMessage(byte address, byte type, unsigned short start, u
       Serial.print("MSG:");
       for (int i = 0; i < message_length-1; i++)
         {
-        Serial.print(message[i]);
+        Serial.print(message[i],HEX);
         Serial.print(",");
         }
       Serial.println(message[message_length]);
@@ -84,10 +84,10 @@ void ModbusSerial::GetResponse(byte response[], short &response_length)
       Serial.print("PACKET:");
       for (int i = 0; i < bytes-1; i++)
         {
-        Serial.print(response[i]);
+        Serial.print(response[i],HEX);
         Serial.print(",");
         }
-      Serial.println(response[bytes-1]);
+      Serial.println(response[bytes-1],HEX);
     #endif
 }
 
@@ -99,6 +99,7 @@ boolean ModbusSerial::fc1(byte address, unsigned short start, unsigned short coi
     byte response[response_length];                              //FC1 response buffer
     
     start -= 1;                                                  //offset
+    memset(message,0x00,message_length);
     
     BuildMessage(address, (byte)1, start, coils, message, message_length);
     
@@ -140,16 +141,16 @@ boolean ModbusSerial::fc1(byte address, unsigned short start, unsigned short coi
 
 boolean ModbusSerial::fc2(byte address, unsigned short start, unsigned short coils, unsigned short values[])
 {
-    short message_lenght = 8;
-    byte message[message_lenght];                                // El Resquest fc3 posee 8 bytes
+    short message_length = 8;
+    byte message[message_length];                                // El Resquest fc3 posee 8 bytes
     short response_length = 5 + (int)ceil((float)((float)coils / 8.0));
     byte response[response_length];                              // FC2 response buffer
     
     start -= 10001;                                              //offset
+    memset(message,0x00,message_length);
+    BuildMessage(address, (byte)2, start, coils, message, message_length);
     
-    BuildMessage(address, (byte)2, start, coils, message, message_lenght);
-    
-    SerialPort->write(message, message_lenght);
+    SerialPort->write(message, message_length);
     GetResponse(response, response_length);
     
     if (CheckResponse(response, response_length)) {
@@ -186,11 +187,13 @@ boolean ModbusSerial::fc2(byte address, unsigned short start, unsigned short coi
 
 boolean ModbusSerial::fc3(byte address, unsigned short start, unsigned short registers, unsigned short values[])
 {
-    byte message[8];                            //El request fc3 posee 8 bytes
+    short message_length = 8;
+    byte message[message_length];                            //El request fc3 posee 8 bytes
     short response_length = 5 + 2 * registers;
     byte response[response_length];             //Response buffer
    
     start -= 40001;                             //offset
+    memset(message,0x00,message_length);
     
     BuildMessage(address, (byte)3, start, registers, message, (short)8);
     
@@ -226,23 +229,15 @@ boolean ModbusSerial::fc3(byte address, unsigned short start, unsigned short reg
 
 boolean ModbusSerial::fc4(byte address, unsigned short start, unsigned short registers, unsigned short values[])
 {
-    byte message[8];                        //El request fc3 posee 8 bytes
+    short message_length = 8;
+    byte message[message_length];                        //El request fc3 posee 8 bytes
     short response_length = 5 + 2 * registers;
     byte response[response_length];       // Response buffer
     
     start -= 30001;
+    memset(message,0x00,message_length);
     
     BuildMessage(address, (byte)4, start, registers, message, (short)8); 
-    
-    #ifdef VERBOSE
-      Serial.print("MSG1:FC4:");
-      for (int i = 0; i < 7; i++)
-        {
-        Serial.print(message[i]);
-        Serial.print(" ");
-        }
-      Serial.println(message[7]);
-    #endif
     
     SerialPort->write(message, 8);
     delay(100);
@@ -251,9 +246,6 @@ boolean ModbusSerial::fc4(byte address, unsigned short start, unsigned short reg
     
     if (CheckResponse(response, response_length))
     {
-        #ifdef VERBOSE
-        Serial.print("MSG1:FC3VALUES:");
-        #endif
         for (int i = 0; i < (response_length-5)/2; i++)
         {
             values[i]=0;
@@ -267,7 +259,7 @@ boolean ModbusSerial::fc4(byte address, unsigned short start, unsigned short reg
         }
         status = 1;  //"Read successful";
         #ifdef VERBOSE
-        Serial.println("MSG0:Respuesta Exitosa");
+        Serial.println("Read successful");
         #endif
         return true;
     }
@@ -275,7 +267,7 @@ boolean ModbusSerial::fc4(byte address, unsigned short start, unsigned short reg
     {
         status = 0;  // "CRC error";
         #ifdef VERBOSE
-        Serial.println("MSG0:Error CRC");
+        Serial.println("CRC error");
         #endif
         return false;
     }
@@ -283,20 +275,21 @@ boolean ModbusSerial::fc4(byte address, unsigned short start, unsigned short reg
 
 boolean ModbusSerial::fc5(byte address, unsigned short start, boolean status)
 {
-    short message_lenght = 8;
-    byte message[message_lenght];        // El request fc5 posee 8 bytes
-    byte response[message_lenght];       // El buffer de respuesta posee 8 bytes
-    short response_length;
+    short message_length = 8;
+    byte message[message_length];        // El request fc5 posee 8 bytes
+    byte response[message_length];       // El buffer de respuesta posee 8 bytes
+    short response_length = message_length;
     unsigned short value = 0;
     
     start -= 1;
+    memset(message,0x00,message_length);
     
     if (status)
       value = 0xFF;
     
-    BuildMessage(address, (byte)5, start, value, message, message_lenght);
+    BuildMessage(address, (byte)5, start, value, message, message_length);
     
-    SerialPort->write(message, message_lenght);
+    SerialPort->write(message, message_length);
     GetResponse(response, response_length);
     
     if (CheckResponse(response, response_length))
@@ -319,18 +312,19 @@ boolean ModbusSerial::fc5(byte address, unsigned short start, boolean status)
 
 boolean ModbusSerial::fc6(byte address, unsigned short start, unsigned short value)
 {
-    short message_lenght = 8;
-    byte message[message_lenght];        // El Resquest fc6 posee 8 bytes
-    byte response[message_lenght];       // El buffer Response posee 8 bytes
-    short response_length;
+    short message_length = 8;
+    byte message[message_length];        // El Resquest fc6 posee 8 bytes
+    byte response[message_length];       // El buffer Response posee 8 bytes
+    short response_length = message_length;
     
     start -= 40001;
+    memset(message,0x00,message_length);
     
     message[4] = (byte)(value >> 8);
     message[5] = (byte)(value);
-    BuildMessage(address, (byte)6, start, value, message, message_lenght);
+    BuildMessage(address, (byte)6, start, value, message, message_length);
     
-    SerialPort->write(message, message_lenght);
+    SerialPort->write(message, message_length);
     GetResponse(response, response_length);
     
     if (CheckResponse(response, response_length))
@@ -354,14 +348,14 @@ boolean ModbusSerial::fc6(byte address, unsigned short start, unsigned short val
 boolean ModbusSerial::fc15(byte address, unsigned short start, unsigned short coils, boolean values[])
 {
     int numbytes = (int)ceil((float)((float)coils / 8.0));
-    short message_lenght = 9 + numbytes;
-    byte message[message_lenght];    
+    short message_length = 9 + numbytes;
+    byte message[message_length]; 
     
     short response_length = 8;
     byte response[response_length];       // El buffer Response posee 8 bytes
     
     start -= 1;
-    
+    memset(message,0x00,message_length);
     message[6] = (byte)(numbytes);
     
     int totalBits = coils;
@@ -374,9 +368,9 @@ boolean ModbusSerial::fc15(byte address, unsigned short start, unsigned short co
             message[i + index] = (byte)(message[i + index] | (byte)((values[j+i*8] & 1) << j));
         }
     }
-    BuildMessage(address, (byte)15, start, coils, message, message_lenght); //Build modbus message
+    BuildMessage(address, (byte)15, start, coils, message, message_length); //Build modbus message
     
-    SerialPort->write(message, message_lenght);
+    SerialPort->write(message, message_length);
     GetResponse(response, response_length);
     
     if (CheckResponse(response, response_length))
@@ -400,12 +394,13 @@ boolean ModbusSerial::fc15(byte address, unsigned short start, unsigned short co
 // Function 16 - Write multiple registers
 boolean ModbusSerial::fc16(byte address, unsigned short start, unsigned short registers, unsigned short values[])
 {
-    short message_lenght = 9 + 2 * registers;
-    byte message[message_lenght];          // El Resquest fc6 posee
+    short message_length = 9 + 2 * registers;
+    byte message[message_length];          // El Resquest fc6 posee
     byte response[8];                      // El buffer Response posee 8 bytes
     short response_length;
     
     start -= 40001;
+    memset(message,0x00,message_length);
     
     message[6] = (byte)(registers * 2);
     
@@ -413,9 +408,9 @@ boolean ModbusSerial::fc16(byte address, unsigned short start, unsigned short re
         message[7 + 2 * i] = (byte)(values[i] >> 8);
         message[8 + 2 * i] = (byte)(values[i]);
     }
-    BuildMessage(address, (byte)16, start, registers, message, message_lenght);
+    BuildMessage(address, (byte)16, start, registers, message, message_length);
     
-    SerialPort->write(message, message_lenght);
+    SerialPort->write(message, message_length);
     GetResponse(response, response_length);
     
     if (CheckResponse(response, response_length))

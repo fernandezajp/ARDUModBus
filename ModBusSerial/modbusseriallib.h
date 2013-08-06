@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <SoftwareSerial.h>
+#define VERBOSE
 
 class ModbusSerial
 {
